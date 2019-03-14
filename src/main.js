@@ -14,7 +14,7 @@ Vue.config.productionTip = false
 Vue.use(ElementUI)
 Vue.use(Vuetify)
 
-Axios.defaults.baseURL = process.env.NODE_ENV === 'production' ? 'http://zha-ita021-w10:8080' : 'http://localhost:9999'
+Axios.defaults.baseURL = process.env.NODE_ENV === 'production' ? 'http://zha-ita021-w10:8080/gallery' : 'http://localhost:9999'
 Axios.defaults.withCredentials = true
 Axios.interceptors.response.use(function (response) {
   Console.push(response)

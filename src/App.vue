@@ -80,10 +80,10 @@
     <div class="console">
       <div class="console-header">CONSOLE</div>
       <div class="console-list" ref="consoleList">
-        <div class="log" v-for="(log, logIndex) in logs" :key="logIndex">
+        <div class="log" v-for="(log, logIndex) in logs" :key="logIndex" :class="{ 'log-animation': logIndex === logs.length - 1 }">
           <div class="log-icons">
-            <span class="method">{{ log.method }}</span>
-            <span class="response-code">{{ log.responseCode }}</span>
+            <span class="method" :class="{ 'active': logIndex === logs.length - 1 }">{{ log.method }}</span>
+            <span class="response-code" :class="{ 'active': logIndex === logs.length - 1 }">{{ log.responseCode }}</span>
           </div>
           <div class="log-details">
             <span>URL: {{ log.url }}</span>
@@ -250,6 +250,41 @@ export default {
   }
 </style>
 <style lang="scss">
+  @-webkit-keyframes Gradient {
+    0% {
+      background-position: 0% 50%
+    }
+    50% {
+      background-position: 100% 50%
+    }
+    100% {
+      background-position: 0% 50%
+    }
+  }
+
+  @-moz-keyframes Gradient {
+    0% {
+      background-position: 0% 50%
+    }
+    50% {
+      background-position: 100% 50%
+    }
+    100% {
+      background-position: 0% 50%
+    }
+  }
+
+  @keyframes Gradient {
+    0% {
+      background-position: 0% 50%
+    }
+    50% {
+      background-position: 100% 50%
+    }
+    100% {
+      background-position: 0% 50%
+    }
+  }
   .header {
     width: 100%;
     height: 60px;
@@ -342,10 +377,19 @@ export default {
       color: white;
     }
     .console-list {
+      width: 100%;
       height: 100%;
       padding-bottom: 60px;
       overflow-y: scroll;
       .log {
+        &.log-animation {
+          color: white !important;
+          background: linear-gradient(-45deg, #40E0D0, #FF8C00, #FF0080, #FF8C00, #40E0D0);
+          background-size: 400% 400%;
+          -webkit-animation: Gradient 3s ease infinite;
+          -moz-animation: Gradient 3s ease infinite;
+          animation: Gradient 3s ease infinite;
+        }
         padding: 18px 12px;
         cursor: pointer;
         border-bottom: 1px solid rgba(black, .15);
@@ -365,6 +409,10 @@ export default {
           font-weight: bold;
           flex-shrink: 0;
           margin-right: 12px;
+        }
+        .method.active, .response-code.active {
+          color: black !important;
+          background-color: white !important;
         }
         .method {
           background-color: cornflowerblue;

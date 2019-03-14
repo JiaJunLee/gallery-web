@@ -38,10 +38,6 @@
     </div>
     <el-dialog title="图片修改" :visible.sync="editImageDialogVisible" width="25%" v-if="currentEditImage">
       <div style="width: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column">
-        <!--<el-upload class="avatar-uploader" action="http://localhost:9999/v1/files" :limit="1" :on-success="handleUploadSuccess" :show-file-list="false" :before-upload="beforeUploadImage" ref="uploader">-->
-          <!--<img v-if="uploadImageUrl" :src="uploadImageUrl" class="avatar">-->
-          <!--<i v-else class="el-icon-plus avatar-uploader-icon"></i>-->
-        <!--</el-upload>-->
         <div style="width: 100%; margin-top: 12px;">
           <el-tag :key="tag" v-for="tag in currentEditImage.tags" closable :disable-transitions="false" @close="handleClose(tag)">{{ tag }}</el-tag>
           <el-input class="input-new-tag" v-if="inputTagVisible" v-model="inputTagValue" ref="saveTagInput" size="small" @keyup.enter.native="handleInputTagConfirm" @blur="handleInputTagConfirm"></el-input>

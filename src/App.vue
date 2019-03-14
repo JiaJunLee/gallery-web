@@ -5,14 +5,15 @@
         <a id="logo" href="/"></a>
         <div>
           <div v-if="user">
-            <el-button class="white--text header-btn" @click="uploadImageDialogVisible = true" type="text">上传</el-button>
-            <v-avatar color="white" :size="38" v-if="user" @click="setUser(null)">
+            <el-button class="white--text header-btn" @click="uploadImageDialogVisible = true" type="text">上传图片</el-button>
+            <el-button class="white--text header-btn" @click="setUser(null)" type="text">登出</el-button>
+            <v-avatar color="white" :size="38" v-if="user">
               <span class="black--text headline">{{ user.username.substr(0, 1).toUpperCase() }}</span>
             </v-avatar>
           </div>
           <div v-else>
             <el-button type="text" class="white--text header-btn" @click="loginDialogVisible = true">登录</el-button>
-            <el-button type="success" @click="loginDialogVisible = true" class="register-btn">注册</el-button>
+            <el-button type="success" @click="registerDialogVisible = true" class="register-btn">注册</el-button>
           </div>
           <el-dialog title="登录" :visible.sync="loginDialogVisible" width="40%">
             <el-form :model="loginUserForm">
@@ -20,7 +21,7 @@
                 <el-input v-model="loginUserForm.username" autocomplete="off"></el-input>
               </el-form-item>
               <el-form-item label="密码" label-width="70px" required>
-                <el-input v-model="loginUserForm.password" autocomplete="off" show-password></el-input>
+                <el-input v-model="loginUserForm.password" autocomplete="off" show-password @keyup.enter.native="userLogin"></el-input>
               </el-form-item>
             </el-form>
             <div slot="footer" class="dialog-footer">
@@ -28,12 +29,42 @@
               <el-button type="primary" @click="userLogin">登 录</el-button>
             </div>
           </el-dialog>
+          <el-dialog title="注册" :visible.sync="registerDialogVisible" width="40%">
+            <el-form :model="registerUserForm">
+              <el-form-item label="用户名" label-width="80px" required>
+                <el-input v-model="registerUserForm.username" autocomplete="off"></el-input>
+              </el-form-item>
+              <el-form-item label="密码" label-width="80px" required>
+                <el-input v-model="registerUserForm.password" autocomplete="off" show-password></el-input>
+              </el-form-item>
+              <el-form-item label="确认密码" label-width="80px" required>
+                <el-input v-model="registerUserForm.passwordConfirm" autocomplete="off" show-password @keyup.enter.native="userRegister"></el-input>
+              </el-form-item>
+            </el-form>
+            <div slot="footer" class="dialog-footer">
+              <el-button @click="registerDialogVisible = false">取 消</el-button>
+              <el-button type="primary" @click="userRegister">注 册</el-button>
+            </div>
+          </el-dialog>
           <el-dialog title="上传图片" :visible.sync="uploadImageDialogVisible" width="25%">
-            <div style="width: 100%; display: flex; align-items: center; justify-content: center">
+            <div style="width: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column">
               <el-upload class="avatar-uploader" action="http://localhost:9999/v1/files" :limit="1" :on-success="handleUploadSuccess" :show-file-list="false" :before-upload="beforeUploadImage" ref="uploader">
                 <img v-if="uploadImageUrl" :src="uploadImageUrl" class="avatar">
                 <i v-else class="el-icon-plus avatar-uploader-icon"></i>
               </el-upload>
+              <div style="width: 100%; margin-top: 12px;">
+                <el-tag :key="tag" v-for="tag in uploadImageForm.tags" closable :disable-transitions="false" @close="handleClose(tag)">{{ tag }}</el-tag>
+                <el-input class="input-new-tag" v-if="inputTagVisible" v-model="inputTagValue" ref="saveTagInput" size="small" @keyup.enter.native="handleInputTagConfirm" @blur="handleInputTagConfirm"></el-input>
+                <el-button v-else class="button-new-tag" size="small" @click="showInputTag">+ New Tag</el-button>
+              </div>
+              <el-select v-model="uploadImageForm.imageType.typeName" placeholder="请选择图片类型" style="width: 100%;" clearable>
+                <el-option
+                  v-for="imageType in imageTypes"
+                  :key="imageType.id"
+                  :label="imageType.typeName"
+                  :value="imageType.typeName">
+                </el-option>
+              </el-select>
             </div>
             <div slot="footer" class="dialog-footer">
               <el-button @click="uploadImageDialogVisible = false">取 消</el-button>
@@ -48,7 +79,7 @@
     </el-container>
     <div class="console">
       <div class="console-header">CONSOLE</div>
-      <div class="console-list">
+      <div class="console-list" ref="consoleList">
         <div class="log" v-for="(log, logIndex) in logs" :key="logIndex">
           <div class="log-icons">
             <span class="method">{{ log.method }}</span>
@@ -71,6 +102,7 @@ export default {
   name: 'App',
   data () {
     return {
+      imageTypes: [],
       loginDialogVisible: false,
       loginUserForm: {
         username: '',
@@ -78,17 +110,34 @@ export default {
       },
       uploadImageDialogVisible: false,
       uploadImageForm: {
-
+        tags: [],
+        imageType: {
+          typeName: ''
+        }
       },
+      inputTagValue: '',
+      inputTagVisible: false,
       uploadImageUrl: '',
       uploadImageFileId: '',
-      logs: []
+      logs: [],
+      registerDialogVisible: false,
+      registerUserForm: {
+        username: '',
+        password: '',
+        passwordConfirm: ''
+      }
     }
   },
   mounted () {
     Console.initialize(this.updateLogs)
+    this.refreshImageTypes()
   },
   methods: {
+    refreshImageTypes () {
+      this.$http.get('/v1/image-types').then(response => {
+        this.imageTypes = response.data
+      })
+    },
     userLogin () {
       this.$http.post('/user/login', this.loginUserForm).then(response => {
         this.loginDialogVisible = false
@@ -102,20 +151,49 @@ export default {
         }
       })
     },
+    userRegister () {
+      if (this.registerUserForm.password !== this.registerUserForm.passwordConfirm) {
+        this.$message.error('密码不一致，请再次确认')
+        return
+      }
+      this.$http.post('/user/register', {
+        username: this.registerUserForm.username,
+        password: this.registerUserForm.password
+      }).then(response => {
+        this.registerDialogVisible = false
+        this.registerUserForm = {
+          username: '',
+          password: '',
+          passwordConfirm: ''
+        }
+        this.$message({
+          type: 'success',
+          message: '注册成功'
+        })
+      }).catch(() => {
+        this.$message.error('注册失败')
+      })
+    },
     handleUploadSuccess (res, file) {
       this.uploadImageUrl = URL.createObjectURL(file.raw)
       this.uploadImageFileId = res.id
     },
     uploadImage () {
-      this.$http.post('/v1/images', {
+      this.$http.post('/v1/images', Object.assign(this.uploadImageForm, {
         uploadUser: {
           id: this.user.id
         },
         imageFile: {
           id: this.uploadImageFileId
         }
-      }).then(response => {
+      })).then(response => {
         this.uploadImageDialogVisible = false
+        this.uploadImageForm = {
+          tags: [],
+          imageType: {
+            typeName: ''
+          }
+        }
         if (this.$refs.view && this.$refs.view.refreshImages) {
           this.$refs.view.refreshImages()
         }
@@ -130,6 +208,26 @@ export default {
     },
     updateLogs (logs) {
       this.logs = logs
+      this.$nextTick(() => {
+        this.$refs.consoleList.scrollTop = this.$refs.consoleList.scrollHeight
+      })
+    },
+    handleClose (tag) {
+      this.uploadImageForm.tags.splice(this.uploadImageForm.tags.indexOf(tag), 1)
+    },
+    handleInputTagConfirm () {
+      let inputValue = this.inputTagValue
+      if (inputValue) {
+        this.uploadImageForm.tags.push(inputValue)
+      }
+      this.inputTagVisible = false
+      this.inputTagValue = ''
+    },
+    showInputTag () {
+      this.inputTagVisible = true
+      this.$nextTick(_ => {
+        this.$refs.saveTagInput.$refs.input.focus()
+      })
     },
     ...mapMutations(['setUser'])
   },
@@ -244,6 +342,9 @@ export default {
       color: white;
     }
     .console-list {
+      height: 100%;
+      padding-bottom: 60px;
+      overflow-y: scroll;
       .log {
         padding: 18px 12px;
         cursor: pointer;
@@ -286,5 +387,22 @@ export default {
         }
       }
     }
+  }
+  .el-tag {
+    margin-right: 10px;
+    margin-bottom: 12px;
+  }
+  .button-new-tag {
+    margin-right: 10px;
+    height: 32px;
+    margin-bottom: 12px;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  .input-new-tag {
+    width: 90px;
+    height: 32px;
+    margin-bottom: 12px;
+    vertical-align: top;
   }
 </style>

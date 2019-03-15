@@ -17,7 +17,7 @@
     <p class="search-tips" v-if="onSearch">为您匹配到 {{ images.length }} 条记录 ：</p>
     <div class="image-flow-wrapper" ref="imageFlowWrapper">
       <div class="image-line-wrapper" v-for="lineIndex in imageLineCount" :key="lineIndex">
-        <div class="image" v-for="(image, imageIndex) in getLineImages(lineIndex)" :key="image.id"
+        <div class="image preview-img-item" v-for="(image, imageIndex) in getLineImages(lineIndex)" :key="image.id"
              :style="{
              backgroundImage: getBackgroundImage(image.imageFile.fileContent),
              width: getImageWidth(image, lineIndex),
@@ -35,6 +35,19 @@
           </div>
         </div>
       </div>
+    </div>
+    <div style="margin: 28px; margin-top: 0 !important; display: flex; align-items: center; justify-content: center;" v-if="images.length > 0">
+      <el-pagination
+        small
+        background
+        @size-change="updatePage"
+        @current-change="updatePage"
+        :current-page.sync="pageable.pageIndex"
+        :page-sizes="[4, 12, 24, 60, 120]"
+        :page-size.sync="pageable.pageSize"
+        layout="total, sizes, prev, pager, next"
+        :total="pageable.total">
+      </el-pagination>
     </div>
     <el-dialog title="图片修改" :visible.sync="editImageDialogVisible" width="25%" v-if="currentEditImage">
       <div style="width: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column">
@@ -61,6 +74,7 @@
 </template>
 
 <script>
+import Axios from 'axios'
 import { mapState } from 'vuex'
 export default {
   name: 'home',
@@ -75,7 +89,12 @@ export default {
       editImageDialogVisible: false,
       currentEditImage: undefined,
       inputTagValue: '',
-      inputTagVisible: false
+      inputTagVisible: false,
+      pageable: {
+        pageIndex: 1,
+        pageSize: 12,
+        total: 0
+      }
     }
   },
   mounted () {
@@ -83,15 +102,46 @@ export default {
     this.refreshImageTypes()
     this.reduceImageFlowWrapperWidth()
     window.addEventListener('resize', this.reduceImageFlowWrapperWidth)
+    const that = this
+    let loading = null
+    Axios.interceptors.request.use(function (config) {
+      loading = that.$loading({
+        lock: true,
+        text: 'Loading',
+        spinner: 'el-icon-loading',
+        background: 'rgba(0, 0, 0, 0.7)'
+      })
+      return config
+    }, function (error) {
+      return Promise.reject(error)
+    })
+    Axios.interceptors.response.use(function (response) {
+      setTimeout(() => {
+        if (loading) {
+          loading.close()
+        }
+      }, 500)
+      return response
+    }, function (error) {
+      return Promise.reject(error)
+    })
   },
   beforeDestroy () {
     window.removeEventListener('resize', this.reduceImageFlowWrapperWidth)
   },
   methods: {
+    updatePage () {
+      if (this.onSearch) {
+        this.searchImages()
+      } else {
+        this.refreshImages()
+      }
+    },
     searchImages () {
       if (this.searchCriteria.trim()) {
-        this.$http.get(`/v1/images/search?tags=${this.searchCriteria}`).then(response => {
-          this.images = response.data
+        this.$http.get(`/v1/images?pageIndex=${this.pageable.pageIndex - 1}&pageSize=${this.pageable.pageSize}&tags=${this.searchCriteria}`).then(response => {
+          this.images = response.data.images
+          this.pageable.total = response.data.total
           this.onSearch = true
         })
       }
@@ -100,8 +150,9 @@ export default {
       this.imageFlowWrapperWidth = this.$refs.imageFlowWrapper ? this.$refs.imageFlowWrapper.offsetWidth : this.imageFlowWrapperWidth
     },
     refreshImages () {
-      this.$http.get('/v1/images').then(response => {
+      this.$http.get(`/v1/images?pageIndex=${this.pageable.pageIndex - 1}&pageSize=${this.pageable.pageSize}`).then(response => {
         this.images = response.data.images
+        this.pageable.total = response.data.total
       })
     },
     refreshImageTypes () {

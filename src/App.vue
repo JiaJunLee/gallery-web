@@ -48,7 +48,7 @@
           </el-dialog>
           <el-dialog title="上传图片" :visible.sync="uploadImageDialogVisible" width="25%">
             <div style="width: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column">
-              <el-upload class="avatar-uploader" action="http://localhost:9999/v1/files" :limit="1" :on-success="handleUploadSuccess" :show-file-list="false" :before-upload="beforeUploadImage" ref="uploader">
+              <el-upload class="avatar-uploader" action="http://zha-ita021-w10:8080/gallery/v1/files" :limit="1" :on-success="handleUploadSuccess" :show-file-list="false" :before-upload="beforeUploadImage" ref="uploader">
                 <img v-if="uploadImageUrl" :src="uploadImageUrl" class="avatar">
                 <i v-else class="el-icon-plus avatar-uploader-icon"></i>
               </el-upload>
